@@ -1,0 +1,13 @@
+{
+  "name": "glasspad",
+"workspaces": [
+  "packages/frontend",
+  "packages/core"
+],
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "packages/frontend",
+    "packages/core"
+  ]
+}

@@ -1,8 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  transpilePackages: ["@glasspad/core"],
   turbopack: {
-    root: __dirname,
+    root: "C:/Users/ggaud/glasspad",
   },
 };
 
