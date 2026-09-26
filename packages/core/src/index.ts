@@ -1,2 +1,2 @@
-﻿export * from "./addressRegistry";
-export * from "./types/manifest";
+﻿export * from './addressRegistry';
+export * from './types/manifest';

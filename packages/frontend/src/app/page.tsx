@@ -1,173 +1,166 @@
-﻿"use client";
+'use client';
 
-import { useWallet } from "@solana/wallet-adapter-react";
-import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
-import "@solana/wallet-adapter-react-ui/styles.css";
+import { useEffect, useState } from 'react';
+import { fr } from '../../src/i18n/locales/fr';
+import { en } from '../../src/i18n/locales/en';
+import { zhCN } from '../../src/i18n/locales/zh-CN';
+import type { Translation } from '../../src/i18n/types';
 
-// ---- Données de démonstration (seront remplacées par @glasspad/core) ----
+type Locale = 'fr' | 'en' | 'zh-CN';
 
-type RoleCouleur = "violet" | "vert" | "bleu" | "orange" | "rouge" | "gris";
+const translations: Record<Locale, Translation> = { fr, en, 'zh-CN': zhCN };
 
-interface AdresseDecodee {
-  role: string;
-  etiquette: string;
-  description: string;
-  adresse: string;
-  immuable: boolean;
-  couleur: RoleCouleur;
+const localeOrder: Locale[] = ['fr', 'en', 'zh-CN'];
+
+function detectLocale(): Locale {
+  if (typeof navigator === 'undefined') return 'fr';
+  const lang = (navigator.language || '').toLowerCase();
+  if (lang.startsWith('zh')) return 'zh-CN';
+  if (lang.startsWith('fr')) return 'fr';
+  return 'en';
 }
 
-const DEMO_ADRESSES: AdresseDecodee[] = [
-  {
-    role: "CREATOR",
-    etiquette: "CREATEUR",
-    description: "Portefeuille du créateur du memecoin",
-    adresse: "CREA7tXk9mQ2vNpLd8wYzF4bHj6rTuE3sGnAqW5cPzVb",
-    immuable: true,
-    couleur: "violet",
-  },
-  {
-    role: "MINT_TOKEN",
-    etiquette: "TOKEN",
-    description: "Adresse du token SPL (frappe/brûlage)",
-    adresse: "TOKN9mQ2vNpLd8wYzF4bHj6rTuE3sGnAqW5cPzVbCrea7tXk",
-    immuable: true,
-    couleur: "bleu",
-  },
-  {
-    role: "LIQUIDITY_VAULT",
-    etiquette: "VAULT",
-    description: "Coffre où est verrouillée la liquidité",
-    adresse: "VAUL4bHj6rTuE3sGnAqW5cPzVbCrea7tXk9mQ2vNpLd8wYzF",
-    immuable: true,
-    couleur: "vert",
-  },
-  {
-    role: "BURN_SINK",
-    etiquette: "BURN",
-    description: "Réceptacle des tokens brûlés (allocation burn)",
-    adresse: "BURN6rTuE3sGnAqW5cPzVbCrea7tXk9mQ2vNpLd8wYzF4bHj",
-    immuable: true,
-    couleur: "rouge",
-  },
-  {
-    role: "PROTOCOL_TREASURY",
-    etiquette: "PROT",
-    description: "Trésorerie du protocole (frais de plateforme)",
-    adresse: "PROT3sGnAqW5cPzVbCrea7tXk9mQ2vNpLd8wYzF4bHj6rTuE",
-    immuable: true,
-    couleur: "orange",
-  },
-  {
-    role: "CHARITY_RESERVE",
-    etiquette: "CHARITY",
-    description: "Réserve caritative déclarée par le créateur",
-    adresse: "CHRY5cPzVbCrea7tXk9mQ2vNpLd8wYzF4bHj6rTuE3sGnAqW",
-    immuable: true,
-    couleur: "vert",
-  },
+const demoTokenName = 'GLASS';
+const demoTokenMint = 'GlassTokenMint1111111111111111111111111111';
+
+type RoleKey =
+  | 'creator'
+  | 'protocol'
+  | 'burn'
+  | 'token'
+  | 'charity'
+  | 'liquidityVault'
+  | 'contributor';
+
+const demoAddresses: { role: RoleKey; address: string }[] = [
+  { role: 'creator', address: 'GlassCreator1111111111111111111111111111111' },
+  { role: 'protocol', address: 'GlassProtocol11111111111111111111111111111' },
+  { role: 'burn', address: 'GlassBurn111111111111111111111111111111111' },
+  { role: 'token', address: demoTokenMint },
+  { role: 'charity', address: 'GlassCharity111111111111111111111111111111' },
+  { role: 'liquidityVault', address: 'GlassLiquidity1111111111111111111111111111' },
+  { role: 'contributor', address: 'GlassContributor11111111111111111111111111' },
 ];
 
-const DEMO_MANIFEST = {
-  burn_bps: 2000,           // 20 %
-  protocol_fee_bps: 300,    // 3 %
-  charity_bps: 500,         // 5 %
-  dev_allocation_bps: 1000, // 10 %
-};
+type ParamKey = 'burnAllocation' | 'platformFee' | 'charityAllocation' | 'hardCap';
 
-// ---- Petits composants d'affichage ----
+const demoParams: { key: ParamKey; value: string }[] = [
+  { key: 'burnAllocation', value: '50 %' },
+  { key: 'platformFee', value: '1 %' },
+  { key: 'charityAllocation', value: '5 %' },
+  { key: 'hardCap', value: '100 SOL' },
+];
 
-const COULEURS: Record<RoleCouleur, string> = {
-  violet: "bg-purple-900 text-purple-200 border-purple-600",
-  vert: "bg-green-900 text-green-200 border-green-600",
-  bleu: "bg-blue-900 text-blue-200 border-blue-600",
-  orange: "bg-orange-900 text-orange-200 border-orange-600",
-  rouge: "bg-red-900 text-red-200 border-red-600",
-  gris: "bg-gray-800 text-gray-300 border-gray-600",
-};
+export default function Page() {
+  const [locale, setLocale] = useState<Locale>('fr');
+  const [copied, setCopied] = useState<string | null>(null);
 
-function Badge({ children, className }: { children: React.ReactNode; className: string }) {
+  useEffect(() => {
+    setLocale(detectLocale());
+  }, []);
+
+  const t: Translation = translations[locale];
+  const explainEntries: string[] = Object.values(t.explain);
+
+  function handleCopy(address: string) {
+    navigator.clipboard
+      .writeText(address)
+      .then(() => {
+        setCopied(address);
+        window.setTimeout(() => setCopied(null), 2000);
+      })
+      .catch(() => {
+        // clipboard indisponible : on ignore silencieusement
+      });
+  }
+
   return (
-    <span className={`inline-block rounded border px-2 py-0.5 text-xs font-bold ${className}`}>
-      {children}
-    </span>
-  );
-}
-
-function LigneAdresse({ a }: { a: AdresseDecodee }) {
-  return (
-    <div className="rounded-lg border border-gray-700 bg-gray-900 p-4">
-      <div className="mb-2 flex flex-wrap items-center gap-2">
-        <Badge className={COULEURS[a.couleur]}>{a.etiquette}</Badge>
-        <span className="text-sm font-semibold text-white">{a.role}</span>
-        {a.immuable ? (
-          <Badge className="bg-gray-800 text-gray-300 border-gray-600">IMMUABLE</Badge>
-        ) : (
-          <Badge className="bg-yellow-900 text-yellow-200 border-yellow-600">MODIFIABLE</Badge>
-        )}
+    <main className="mx-auto min-h-screen max-w-3xl bg-white px-4 py-10">
+      <div className="mb-8 flex items-center justify-end gap-2">
+        <span className="text-sm text-gray-500">{t.common.languageLabel}</span>
+        {localeOrder.map((code) => (
+          <button
+            key={code}
+            type="button"
+            onClick={() => setLocale(code)}
+            className={
+              code === locale
+                ? 'rounded-md border border-indigo-600 bg-indigo-600 px-3 py-1 text-sm font-semibold text-white'
+                : 'rounded-md border border-gray-300 bg-white px-3 py-1 text-sm text-gray-700 hover:bg-gray-100'
+            }
+          >
+            {translations[code].langName}
+          </button>
+        ))}
       </div>
-      <p className="mb-2 text-sm text-gray-400">{a.description}</p>
-      <code className="block break-all rounded bg-black px-3 py-2 font-mono text-xs text-green-400">
-        {a.adresse}
-      </code>
-    </div>
-  );
-}
 
-function Pourcentage({ libelle, bps }: { libelle: string; bps: number }) {
-  return (
-    <div className="rounded-lg border border-gray-700 bg-gray-900 p-4">
-      <div className="text-sm text-gray-400">{libelle}</div>
-      <div className="text-2xl font-bold text-white">{(bps / 100).toFixed(1)} %</div>
-    </div>
-  );
-}
+      <h1 className="mb-3 text-3xl font-bold text-gray-900">{t.common.title}</h1>
+      <p className="mb-8 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
+        {t.common.transparencyNote}
+      </p>
 
-// ---- Page ----
-
-export default function Dashboard() {
-  const { publicKey, connected } = useWallet();
-
-  return (
-    <main className="min-h-screen bg-gray-950 p-8 text-white">
-      <header className="mb-8">
-        <div className="mb-4">
-          <WalletMultiButton />
+      <div className="mb-8 flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4">
+        <div>
+          <p className="text-lg font-semibold text-gray-900">{demoTokenName}</p>
+          <p className="break-all font-mono text-xs text-gray-500">{demoTokenMint}</p>
         </div>
-        <h1 className="text-3xl font-bold">GlassPad</h1>
-        <p className="text-gray-400">
-          Lanceur de memecoins transparent — chaque adresse est étiquetée et lisible.
-        </p>
-        <div className="mt-4 text-sm">
-          {connected ? (
-            <p>
-              Portefeuille connecté :{" "}
-              <code className="font-mono text-green-400">{publicKey?.toBase58()}</code>
-            </p>
-          ) : (
-            <p className="text-yellow-400">Aucun portefeuille connecté.</p>
-          )}
-        </div>
-      </header>
+        <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
+          {t.status.verified}
+        </span>
+      </div>
 
       <section className="mb-8">
-        <h2 className="mb-3 text-xl font-semibold">Paramètres du manifest (basis points)</h2>
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-          <Pourcentage libelle="Burn" bps={DEMO_MANIFEST.burn_bps} />
-          <Pourcentage libelle="Frais protocole" bps={DEMO_MANIFEST.protocol_fee_bps} />
-          <Pourcentage libelle="Caritatif" bps={DEMO_MANIFEST.charity_bps} />
-          <Pourcentage libelle="Allocation dev" bps={DEMO_MANIFEST.dev_allocation_bps} />
-        </div>
+        <h2 className="mb-1 text-xl font-semibold text-gray-900">{t.sections.addresses.title}</h2>
+        <p className="mb-3 text-sm text-gray-500">{t.sections.addresses.description}</p>
+        <ul className="space-y-2">
+          {demoAddresses.map((entry) => {
+            const roleText = t.roles[entry.role];
+            const isCopied = copied === entry.address;
+            return (
+              <li key={entry.role} className="rounded-lg border border-gray-200 bg-white p-3">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-gray-900">{roleText.label}</p>
+                    <p className="text-xs text-gray-500">{roleText.description}</p>
+                    <p className="mt-1 break-all font-mono text-xs text-gray-700">{entry.address}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleCopy(entry.address)}
+                    className="shrink-0 rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:bg-gray-100"
+                  >
+                    {isCopied ? t.common.copied : t.common.copyAddress}
+                  </button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
       </section>
 
-      <section>
-        <h2 className="mb-3 text-xl font-semibold">Registre des adresses</h2>
-        <div className="grid gap-4 md:grid-cols-2">
-          {DEMO_ADRESSES.map((a) => (
-            <LigneAdresse key={a.role} a={a} />
+      <section className="mb-8">
+        <h2 className="mb-1 text-xl font-semibold text-gray-900">{t.sections.parameters.title}</h2>
+        <p className="mb-3 text-sm text-sm text-gray-500">{t.sections.parameters.description}</p>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {demoParams.map((param) => (
+            <div key={param.key} className="rounded-lg border border-gray-200 bg-white p-3">
+              <p className="text-sm font-semibold text-gray-900">{t.params[param.key].label}</p>
+              <p className="mt-1 text-2xl font-bold text-indigo-600">{param.value}</p>
+              <p className="mt-1 text-xs text-gray-500">{t.params[param.key].description}</p>
+            </div>
           ))}
         </div>
       </section>
+
+      <div className="border-t border-gray-200 pt-6">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {explainEntries.map((text) => (
+            <div key={text} className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600">
+              {text}
+            </div>
+          ))}
+        </div>
+      </div>
     </main>
   );
 }
